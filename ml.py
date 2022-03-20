@@ -7,12 +7,13 @@ from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from mne.decoding import Vectorizer
+import warnings
 
 
 def eval(data, labels, model='logistic'):
 
     if model == 'logistic':
-        base_model = LogisticRegression(solver='lbfgs', max_iter=1000)
+        base_model = LogisticRegression(solver='lbfgs', max_iter=100)
     elif model == 'logistic_cv':
         base_model = LogisticRegressionCV(solver='saga', max_iter=5000,
                                           penalty='elasticnet',
@@ -26,7 +27,9 @@ def eval(data, labels, model='logistic'):
 
     # Eval w/ stratified balanced acc
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    mean_bac = np.mean(cross_val_score(clf, data, labels, scoring='balanced_accuracy', cv=cv))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mean_bac = np.mean(cross_val_score(clf, data, labels, scoring='balanced_accuracy', cv=cv))
 
     return mean_bac
 

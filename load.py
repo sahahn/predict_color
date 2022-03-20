@@ -167,17 +167,20 @@ def apply_auto_reject(concat_epochs, auto_reject):
     if auto_reject is False:
         return concat_epochs
 
-    # Use base AutoReject object in these cases
-    if auto_reject is True or auto_reject == 'ar':
-        return AutoReject(verbose=False).fit_transform(concat_epochs)
-    
-    # Can alternatively use Ransac
-    elif auto_reject == 'ransac':
-        return Ransac(verbose=False).fit_transform(concat_epochs)
-    
-    # Some other str, raise error
-    else:
-        raise RuntimeError('invalid auto_reject passed')
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        # Use base AutoReject object in these cases
+        if auto_reject is True or auto_reject == 'ar':
+            return AutoReject(verbose=False, random_state=2).fit_transform(concat_epochs)
+        
+        # Can alternatively use Ransac
+        elif auto_reject == 'ransac':
+            return Ransac(verbose=False, random_state=2).fit_transform(concat_epochs)
+        
+        # Some other str, raise error
+        else:
+            raise RuntimeError('invalid auto_reject passed')
 
 def conv_runs_to_epochs(runs,
                         l_freq=None, h_freq=None,
@@ -211,8 +214,7 @@ def conv_runs_to_epochs(runs,
         # Mute warnings ... 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-
-            ica_obj = mne.preprocessing.ICA(verbose=False)
+            ica_obj = mne.preprocessing.ICA(verbose=False, random_state=2)
             ica_obj.fit(concat_epochs)
             concat_epochs = ica_obj.apply(concat_epochs, exclude=ica)
     
