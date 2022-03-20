@@ -1,0 +1,10 @@
+/.ipynb_checkpoints
+/data
+/load.py
+/ml.py
+/ref_issues
+/test_avg_band_power.ipynb
+/test_raw_input.ipynb
+/test_summary_stats.ipynb
+/Untitled.ipynb
+/__pycache__
