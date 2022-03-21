@@ -17,16 +17,16 @@ def eval(data, labels, model='logistic'):
     elif model == 'logistic_cv':
         base_model = LogisticRegressionCV(solver='saga', max_iter=5000,
                                           penalty='elasticnet',
-                                          l1_ratios=[.1, .5, .7, .9], n_jobs=16)
+                                          l1_ratios=[.1, .5, .7, .9], n_jobs=8)
     elif model == 'rf':
-        base_model = RandomForestClassifier(n_jobs=16)
+        base_model = RandomForestClassifier(n_jobs=8)
 
 
     # Init pipeline
     clf = make_pipeline(Vectorizer(), StandardScaler(), base_model)
 
     # Eval w/ stratified balanced acc
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         mean_bac = np.mean(cross_val_score(clf, data, labels, scoring='balanced_accuracy', cv=cv))
