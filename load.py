@@ -2,9 +2,13 @@ import os
 import numpy as np
 from brainflow.data_filter import DataFilter
 import mne
-from autoreject import AutoReject, Ransac
 from scipy import stats
 import warnings
+
+try:
+    from autoreject import AutoReject, Ransac
+except ImportError:
+    pass
 
 # Fixed parameters related to the type of EEG used
 SAMPLING_RATE = 125
@@ -15,7 +19,9 @@ CH_TYPES = ['eeg'] * N_CHANNELS
 # Might change based on parameters of setup
 # Note: the baseline color is always 1, and shouldn't
 # be referenced explicitly here
-EVENT_IDS = {'Red': 2, 'Green': 3, 'Blue': 4}
+EVENT_IDS = {'Red': 2, 'Green': 3, 'Blue': 4, '#FC5C04': 5,
+             '#844CD4': 6, '#2CFCFC': 7, '#FCFB20': 8}
+REV_EVENT_IDS = {EVENT_IDS[e]: e for e in EVENT_IDS}
 
 def load_runs(data_dr):
     
@@ -128,9 +134,12 @@ def conv_raw_to_epochs(raw, event_channel, tmin=-2, tmax=1.9):
     # Extract events from event channel in expected format
     events = extract_events(event_channel)
 
+    # Set event ids to just subset
+    event_ids = {e: EVENT_IDS[e] for e in EVENT_IDS if EVENT_IDS[e] in events[:, -1]}
+
     # Conv to Epochs object
     # Note: don't apply any baseline correction here
-    epochs = mne.Epochs(raw, events, EVENT_IDS,
+    epochs = mne.Epochs(raw, events, event_ids,
                         tmin=tmin, tmax=tmax,
                         baseline=None, preload=True,
                         verbose=False)
@@ -218,6 +227,9 @@ def conv_runs_to_epochs(runs,
             ica_obj.fit(concat_epochs)
             concat_epochs = ica_obj.apply(concat_epochs, exclude=ica)
     
+    else:
+        ica_obj = None
+    
     # Set ref to average
     if set_average_ref:
         concat_epochs = concat_epochs.set_eeg_reference('average')
@@ -235,14 +247,56 @@ def conv_runs_to_epochs(runs,
         concat_epochs = concat_epochs.crop(0, tmax)
     
     # Return final concat epochs w/ requested processing applied
-    return concat_epochs
+    return concat_epochs, ica_obj
+
+def proc_new(new_data, l_freq=None, h_freq=None,
+             epoch_len=239, ica_obj=None, ica=None,
+             set_average_ref=True, drop_ref_ch=False,
+             **params):
+    '''The passed raw data here should have the last two seconds be the event of interest,
+    so that filtering will work out nicer'''
+
+    # Conv to mne raw
+    raw, _ = conv_to_mne_raw(new_data)
+
+    # Apply filter if any
+    if l_freq is not None and h_freq is not None:
+        raw = raw.filter(l_freq=l_freq, h_freq=h_freq, fir_design='firwin')
+
+    # Instead of converting to Epoch, just crop epoch len
+    raw._data = raw._data[:, -epoch_len:]
+
+    # Apply the saved ica if any
+    if ica is not None:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            raw = ica_obj.apply(raw, exclude=ica)
+
+    # Set average channel ref if requested
+    if set_average_ref:
+        raw = raw.set_eeg_reference('average')
+
+    # We skip apply baseline, as we are assuming cont. prediction
+    # and therefore don't want to use this extra info
+
+    # Note, we also skip crop
+    if drop_ref_ch:
+        raw = raw.drop_channels(['Fz', 'Cz', 'Pz', 'Oz'])
+    
+    # Return as np array
+    return raw.get_data()
+
+
 
 def extract_summary_stats(epochs):
     '''Extract from an epochs object, a series
     of summary statistics per channel'''
 
     # Get data as numpy array
-    data = epochs.get_data()
+    if isinstance(epochs, np.ndarray):
+        data = epochs
+    else:
+        data = epochs.get_data()
 
     def rms(x, axis=-1):
         return np.sqrt(np.mean(x ** 2, axis=axis))
@@ -259,3 +313,4 @@ def extract_summary_stats(epochs):
     concat_feats = np.concatenate([func(data, axis=-1) for func in funcs], axis=-1)
 
     return concat_feats
+
