@@ -19,8 +19,11 @@ CH_TYPES = ['eeg'] * N_CHANNELS
 # Might change based on parameters of setup
 # Note: the baseline color is always 1, and shouldn't
 # be referenced explicitly here
-EVENT_IDS = {'Red': 2, 'Green': 3, 'Blue': 4, '#FC5C04': 5,
-             '#844CD4': 6, '#2CFCFC': 7, '#FCFB20': 8}
+EVENT_IDS = {'red' :2 , 'green' : 3, 'blue' :4,
+             '#FC5C04' :5 , '#844CD4' :6 , '#2CFCFC' :7, '#FCFB20' : 8,
+             '#FC5C9C' : 9,'#7C04FC' : 10,'#9C3C34' : 11,
+             '#E02B2C' : 12,'#1074CA' : 13, '#D7E3F7': 14,
+             '#FFFFFF' : 15}
 REV_EVENT_IDS = {EVENT_IDS[e]: e for e in EVENT_IDS}
 
 def load_runs(data_dr):
@@ -285,8 +288,6 @@ def proc_new(new_data, l_freq=None, h_freq=None,
     
     # Return as np array
     return raw.get_data()
-
-
 
 def extract_summary_stats(epochs):
     '''Extract from an epochs object, a series
